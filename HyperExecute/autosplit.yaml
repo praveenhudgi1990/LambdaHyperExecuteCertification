@@ -1,0 +1,52 @@
+---
+version: 0.1
+globalTimeout: 150
+testSuiteTimeout: 150
+testSuiteStep: 150
+
+runson: linux
+
+autosplit: true
+retryOnFailure: true
+
+maxRetries: 3
+concurrency: 1
+
+shell: bash
+
+env:
+  # PAT: ${{ .secrets.testKey }}
+  CACHE_DIR: m2_cache_dir
+
+cacheKey: '{{ checksum "pom.xml" }}'
+cacheDirectories:
+  - .m2
+
+pre:
+  # Create the Cache directory
+  - mkdir -p m2_cache_dir
+  # Download and install packages in the CACHE_DIR.
+  # Skip execution of the tests in the pre step
+  - mvn -Dmaven.repo.local=$CACHE_DIR -Dmaven.test.skip=true clean install
+
+
+
+mergeArtifacts: true
+
+uploadArtefacts:
+ - name: ExecutionSnapshots
+   path:
+    - target/surefire-reports/html/**
+
+report: true
+partialReports:
+  location: target/surefire-reports/html
+  type: html
+  frameworkName: extent
+
+testDiscovery:
+  type: raw
+  mode: dynamic
+  command: grep 'test name' xml/testng_linux.xml | awk '{print$2}' | sed 's/name=//g' | sed 's/>//g'
+
+testRunnerCommand: mvn test -Dplatname=linux -Dmaven.repo.local=./.m2 dependency:resolve -DselectedTests=$test
